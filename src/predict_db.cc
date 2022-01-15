@@ -51,8 +51,8 @@ bool PredictDb::Load() {
   }
   DLOG(INFO) << "found string table of size "
              << metadata_->value_trie.get() << ".";
-  value_trie_ = make_unique<StringTable>(metadata_->value_trie.get(),
-                                         metadata_->value_trie_size);
+  value_trie_ = std::make_unique<StringTable>(metadata_->value_trie.get(),
+                                              metadata_->value_trie_size);
 
   return true;
 }

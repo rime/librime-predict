@@ -104,7 +104,8 @@ Predictor* PredictorComponent::Create(const Ticket& ticket) {
   if (!db_) {
     the<ResourceResolver> res(
         Service::instance().CreateResourceResolver({"predict_db", "", ""}));
-    auto db = make_unique<PredictDb>(res->ResolvePath("predict.db").string());
+    auto db = std::make_unique<PredictDb>(
+        res->ResolvePath("predict.db").string());
     if (db && db->Load()) {
       db_ = std::move(db);
     }
