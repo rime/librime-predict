@@ -10,9 +10,6 @@
 #include <rime/service.h>
 #include <rime/translation.h>
 
-
-static const char* kPlaceholder = " ";
-
 namespace rime {
 
 Predictor::Predictor(const Ticket& ticket, PredictDb* db)
@@ -76,9 +73,8 @@ void Predictor::OnContextUpdate(Context* ctx) {
 
 void Predictor::Predict(Context* ctx, const string& context_query) {
   if (const auto* candidates = db_->Lookup(context_query)) {
-    ctx->set_input(kPlaceholder);
     int end = ctx->input().length();
-    Segment segment(0, end);
+    Segment segment(end, end);
     segment.status = Segment::kGuess;
     segment.tags.insert("prediction");
     ctx->composition().AddSegment(segment);
@@ -88,7 +84,7 @@ void Predictor::Predict(Context* ctx, const string& context_query) {
     for (auto* it = candidates->begin(); it != candidates->end(); ++it) {
       translation->Append(
           New<SimpleCandidate>(
-              "prediction", 0, end, db_->GetEntryText(*it)));
+              "prediction", end, end, db_->GetEntryText(*it)));
     }
     auto menu = New<Menu>();
     menu->AddTranslation(translation);
