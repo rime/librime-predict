@@ -27,3 +27,14 @@ jobs:
         run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build
+
+      - name: Build predict.db
+        working-directory: build/bin
+        run: cat ../../plugins/predict/data/sample.txt | ../plugins/predict/bin/build_predict
+
+      - name: Test
+        working-directory: build/bin
+        run: |
+          sed -i '48a \    - predictor' luna_pinyin.schema.yaml
+          echo -e 'qi \n ' | ./rime_api_console | tee log
+          grep 'commit: 一' log
