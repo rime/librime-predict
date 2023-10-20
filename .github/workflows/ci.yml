@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout librime
+        uses: actions/checkout@v4
+        with:
+          repository: rime/librime
+
+      - name: Checkout last commit
+        uses: actions/checkout@v4
+        with:
+          path: plugins/predict
+
+      - run: ls plugins && ls plugins/predict
+
+      - name: Install dependency
+        run: ./action-install-linux.sh
+
+      - name: Build librime with plugin
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
