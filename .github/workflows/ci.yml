@@ -20,8 +20,6 @@ jobs:
         with:
           path: plugins/predict
 
-      - run: ls plugins && ls plugins/predict
-
       - name: Install dependency
         run: ./action-install-linux.sh
 
