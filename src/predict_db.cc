@@ -94,8 +94,8 @@ bool PredictDb::Build(const predict::RawData& data) {
     return false;
   }
   // create metadata in the beginning of file
-  auto metadata = Allocate<predict::Metadata>();
-  if (!metadata) {
+  metadata_ = Allocate<predict::Metadata>();
+  if (!metadata_) {
     LOG(ERROR) << "Error creating metadata in file '" << file_name() << "'.";
     return false;
   }
@@ -128,8 +128,8 @@ bool PredictDb::Build(const predict::RawData& data) {
     return false;
   }
   std::memcpy(array, key_trie_->array(), key_trie_image_size);
-  metadata->key_trie = array;
-  metadata->key_trie_size = key_trie_array_size;
+  metadata_->key_trie = array;
+  metadata_->key_trie_size = key_trie_array_size;
   // save string table
   char* value_trie_image = Allocate<char>(value_trie_image_size);
   if (!value_trie_image) {
@@ -137,13 +137,12 @@ bool PredictDb::Build(const predict::RawData& data) {
     return false;
   }
   string_table.Dump(value_trie_image, value_trie_image_size);
-  metadata->value_trie = value_trie_image;
-  metadata->value_trie_size = value_trie_image_size;
+  metadata_->value_trie = value_trie_image;
+  metadata_->value_trie_size = value_trie_image_size;
   // at last, complete the metadata
-  std::strncpy(metadata->format,
+  std::strncpy(metadata_->format,
                kPredictFormat.c_str(),
                kPredictFormat.length());
-  metadata_ = metadata;
   return true;
 }
 
