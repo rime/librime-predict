@@ -47,8 +47,7 @@ class PredictDb : public MappedFile {
 
  private:
   int WriteCandidates(const vector<predict::RawEntry>& candidates,
-                      StringTableBuilder* string_table,
-                      table::Entry*& entry);
+                      const table::Entry* entry);
 
   predict::Metadata* metadata_ = nullptr;
   the<Darts::DoubleArray> key_trie_;

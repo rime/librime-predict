@@ -67,8 +67,7 @@ bool PredictDb::Save() {
 }
 
 int PredictDb::WriteCandidates(const vector<predict::RawEntry>& candidates,
-                               StringTableBuilder* string_table,
-                               table::Entry*& entry) {
+                               const table::Entry* entry) {
   auto* array = CreateArray<table::Entry>(candidates.size());
   auto* next = array->begin();
   for (size_t i = 0; i < candidates.size(); ++i) {
@@ -134,11 +133,12 @@ bool PredictDb::Build(const predict::RawData& data) {
   }
 
   // copy from entry vector to entry array
-  table::Entry* entry = &entries[0];
+  const table::Entry* available_entries = &entries[0];
   for (const auto& kv : data) {
     if (kv.second.empty())
       continue;
-    values.push_back(WriteCandidates(kv.second, &string_table, entry));
+    values.push_back(WriteCandidates(kv.second, available_entries));
+    available_entries += kv.second.size();
   }
   // build real key trie
   if (0 != key_trie_->build(data_size, &keys[0], NULL, &values[0])) {
