@@ -40,8 +40,8 @@ bool PredictDb::Load() {
     Close();
     return false;
   }
-  DLOG(INFO) << "found double array image of size "
-             << metadata_->key_trie_size << ".";
+  DLOG(INFO) << "found double array image of size " << metadata_->key_trie_size
+             << ".";
   key_trie_->set_array(metadata_->key_trie.get(), metadata_->key_trie_size);
 
   if (!metadata_->value_trie) {
@@ -49,8 +49,8 @@ bool PredictDb::Load() {
     Close();
     return false;
   }
-  DLOG(INFO) << "found string table of size "
-             << metadata_->value_trie.get() << ".";
+  DLOG(INFO) << "found string table of size " << metadata_->value_trie.get()
+             << ".";
   value_trie_ = std::make_unique<StringTable>(metadata_->value_trie.get(),
                                               metadata_->value_trie_size);
 
@@ -67,13 +67,11 @@ bool PredictDb::Save() {
 }
 
 int PredictDb::WriteCandidates(const vector<predict::RawEntry>& candidates,
-                               StringTableBuilder* string_table) {
+                               const table::Entry* entry) {
   auto* array = CreateArray<table::Entry>(candidates.size());
   auto* next = array->begin();
-  for (const auto& entry : candidates) {
-    string_table->Add(entry.text, entry.weight, &next->text.str_id());
-    next->weight = float(entry.weight);
-    ++next;
+  for (size_t i = 0; i < candidates.size(); ++i) {
+    *next++ = *entry++;
   }
   auto offset = reinterpret_cast<char*>(array) - address();
   return int(offset);
@@ -83,44 +81,70 @@ bool PredictDb::Build(const predict::RawData& data) {
   // create predict db
   int data_size = data.size();
   const size_t kReservedSize = 1024;
-  const size_t kCandidatesPerKey = 10;
-  const size_t kKeyStringSize = 10;
-  const size_t kCandidateStringSize = 10;
-  size_t estimated_size = kReservedSize + data_size * (
-      sizeof(Array<table::Entry>) + kKeyStringSize +
-      kCandidatesPerKey * (sizeof(table::Entry) + kCandidateStringSize));
+
+  size_t entry_count = 0;
+  for (const auto& kv : data) {
+    entry_count += kv.second.size();
+  }
+  StringTableBuilder string_table;
+  vector<table::Entry> entries(entry_count);
+  vector<const char*> keys;
+  vector<int> values(data_size);
+  keys.reserve(data_size);
+  int i = 0;
+  for (const auto& kv : data) {
+    if (kv.second.empty())
+      continue;
+    for (const auto& candidate : kv.second) {
+      string_table.Add(candidate.text, candidate.weight,
+                       &entries[i].text.str_id());
+      entries[i].weight = float(candidate.weight);
+      ++i;
+    }
+    keys.push_back(kv.first.c_str());
+  }
+  size_t key_trie_array_size;
+  size_t key_trie_image_size;
+  {
+    // build a temporary key_trie to get size
+    Darts::DoubleArray key_trie;
+    key_trie.build(data_size, &keys[0], NULL, &values[0]);
+    key_trie_array_size = key_trie.size();
+    key_trie_image_size = key_trie.total_size();
+    values.clear();
+  }
+  // this writes to entry vector, which should be copied to entry array later
+  string_table.Build();
+  size_t value_trie_image_size = string_table.BinarySize();
+  size_t array_size =
+      data_size * (sizeof(Array<table::Entry>) - sizeof(table::Entry)) +
+      entry_count * sizeof(table::Entry);
+  size_t estimated_size =
+      kReservedSize + array_size + key_trie_image_size + value_trie_image_size;
   if (!Create(estimated_size)) {
     LOG(ERROR) << "Error creating predict db file '" << file_name() << "'.";
     return false;
   }
   // create metadata in the beginning of file
-  auto metadata = Allocate<predict::Metadata>();
-  if (!metadata) {
+  metadata_ = Allocate<predict::Metadata>();
+  if (!metadata_) {
     LOG(ERROR) << "Error creating metadata in file '" << file_name() << "'.";
     return false;
   }
-  // build trie
-  StringTableBuilder string_table;
-  int entry_count = 0;
-  vector<const char*> keys;
-  vector<int> values;
-  keys.reserve(data_size);
-  values.reserve(data_size);
+
+  // copy from entry vector to entry array
+  const table::Entry* available_entries = &entries[0];
   for (const auto& kv : data) {
     if (kv.second.empty())
       continue;
-    keys.push_back(kv.first.c_str());
-    values.push_back(WriteCandidates(kv.second, &string_table));
-    entry_count += kv.second.size();
+    values.push_back(WriteCandidates(kv.second, available_entries));
+    available_entries += kv.second.size();
   }
-  string_table.Build();
+  // build real key trie
   if (0 != key_trie_->build(data_size, &keys[0], NULL, &values[0])) {
     LOG(ERROR) << "Error building double-array trie.";
     return false;
   }
-  size_t key_trie_array_size = key_trie_->size();
-  size_t key_trie_image_size = key_trie_->total_size();
-  size_t value_trie_image_size = string_table.BinarySize();
   // save double-array image
   char* array = Allocate<char>(key_trie_image_size);
   if (!array) {
@@ -128,8 +152,8 @@ bool PredictDb::Build(const predict::RawData& data) {
     return false;
   }
   std::memcpy(array, key_trie_->array(), key_trie_image_size);
-  metadata->key_trie = array;
-  metadata->key_trie_size = key_trie_array_size;
+  metadata_->key_trie = array;
+  metadata_->key_trie_size = key_trie_array_size;
   // save string table
   char* value_trie_image = Allocate<char>(value_trie_image_size);
   if (!value_trie_image) {
@@ -137,13 +161,11 @@ bool PredictDb::Build(const predict::RawData& data) {
     return false;
   }
   string_table.Dump(value_trie_image, value_trie_image_size);
-  metadata->value_trie = value_trie_image;
-  metadata->value_trie_size = value_trie_image_size;
+  metadata_->value_trie = value_trie_image;
+  metadata_->value_trie_size = value_trie_image_size;
   // at last, complete the metadata
-  std::strncpy(metadata->format,
-               kPredictFormat.c_str(),
+  std::strncpy(metadata_->format, kPredictFormat.c_str(),
                kPredictFormat.length());
-  metadata_ = metadata;
   return true;
 }
 
