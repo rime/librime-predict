@@ -7,8 +7,19 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout last commit
+        uses: actions/checkout@v4
+      - name: Install clang-format
+        run: sudo apt install -y clang-format
+      - name: Lint
+        run: find src tools -name '*.cc' -o -name '*.h' | xargs clang-format -Werror --dry-run || { echo Please lint your code by '"'"find src tools -name '*.cc' -o -name '*.h' | xargs clang-format -i"'"'.; false; }
+
   build:
     runs-on: ubuntu-latest
+    needs: lint
     steps:
       - name: Checkout librime
         uses: actions/checkout@v4
