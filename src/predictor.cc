@@ -10,7 +10,6 @@
 #include <rime/service.h>
 #include <rime/translation.h>
 
-
 static const char* kPlaceholder = " ";
 
 namespace rime {
@@ -19,16 +18,10 @@ Predictor::Predictor(const Ticket& ticket, PredictDb* db)
     : Processor(ticket), db_(db) {
   // update prediction on context change.
   auto* context = engine_->context();
-  select_connection_ =
-      context->select_notifier().connect(
-          [this](Context* ctx) {
-            OnSelect(ctx);
-          });
-  context_update_connection_ =
-      context->update_notifier().connect(
-          [this](Context* ctx) {
-            OnContextUpdate(ctx);
-          });
+  select_connection_ = context->select_notifier().connect(
+      [this](Context* ctx) { OnSelect(ctx); });
+  context_update_connection_ = context->update_notifier().connect(
+      [this](Context* ctx) { OnContextUpdate(ctx); });
 }
 
 Predictor::~Predictor() {
@@ -66,8 +59,7 @@ void Predictor::OnContextUpdate(Context* ctx) {
     return;
   }
   auto last_commit = ctx->commit_history().back();
-  if (last_commit.type == "punct" ||
-      last_commit.type == "raw" ||
+  if (last_commit.type == "punct" || last_commit.type == "raw" ||
       last_commit.type == "thru") {
     return;
   }
@@ -87,8 +79,7 @@ void Predictor::Predict(Context* ctx, const string& context_query) {
     auto translation = New<FifoTranslation>();
     for (auto* it = candidates->begin(); it != candidates->end(); ++it) {
       translation->Append(
-          New<SimpleCandidate>(
-              "prediction", 0, end, db_->GetEntryText(*it)));
+          New<SimpleCandidate>("prediction", 0, end, db_->GetEntryText(*it)));
     }
     auto menu = New<Menu>();
     menu->AddTranslation(translation);
@@ -104,8 +95,8 @@ Predictor* PredictorComponent::Create(const Ticket& ticket) {
   if (!db_) {
     the<ResourceResolver> res(
         Service::instance().CreateResourceResolver({"predict_db", "", ""}));
-    auto db = std::make_unique<PredictDb>(
-        res->ResolvePath("predict.db").string());
+    auto db =
+        std::make_unique<PredictDb>(res->ResolvePath("predict.db").string());
     if (db && db->Load()) {
       db_ = std::move(db);
     }

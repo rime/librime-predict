@@ -40,8 +40,8 @@ bool PredictDb::Load() {
     Close();
     return false;
   }
-  DLOG(INFO) << "found double array image of size "
-             << metadata_->key_trie_size << ".";
+  DLOG(INFO) << "found double array image of size " << metadata_->key_trie_size
+             << ".";
   key_trie_->set_array(metadata_->key_trie.get(), metadata_->key_trie_size);
 
   if (!metadata_->value_trie) {
@@ -49,8 +49,8 @@ bool PredictDb::Load() {
     Close();
     return false;
   }
-  DLOG(INFO) << "found string table of size "
-             << metadata_->value_trie.get() << ".";
+  DLOG(INFO) << "found string table of size " << metadata_->value_trie.get()
+             << ".";
   value_trie_ = std::make_unique<StringTable>(metadata_->value_trie.get(),
                                               metadata_->value_trie_size);
 
@@ -164,8 +164,7 @@ bool PredictDb::Build(const predict::RawData& data) {
   metadata_->value_trie = value_trie_image;
   metadata_->value_trie_size = value_trie_image_size;
   // at last, complete the metadata
-  std::strncpy(metadata_->format,
-               kPredictFormat.c_str(),
+  std::strncpy(metadata_->format, kPredictFormat.c_str(),
                kPredictFormat.length());
   return true;
 }

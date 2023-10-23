@@ -7,11 +7,10 @@
 using namespace rime;
 
 static void rime_predict_initialize() {
-  Registry &r = Registry::instance();
+  Registry& r = Registry::instance();
   r.Register("predictor", new PredictorComponent);
 }
 
-static void rime_predict_finalize() {
-}
+static void rime_predict_finalize() {}
 
 RIME_REGISTER_MODULE(predict)
