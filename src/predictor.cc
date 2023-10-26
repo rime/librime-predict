@@ -28,7 +28,8 @@ Predictor::~Predictor() {
 }
 
 ProcessResult Predictor::ProcessKeyEvent(const KeyEvent& key_event) {
-  if (key_event.keycode() == XK_BackSpace) {
+  auto keycode = key_event.keycode();
+  if (keycode == XK_BackSpace || keycode == XK_Escape) {
     last_action_ = kDelete;
     auto* ctx = engine_->context();
     if (!ctx->composition().empty() &&
