@@ -23,6 +23,10 @@ class Predictor : public Processor {
  private:
   enum Action { kUnspecified, kSelect, kDelete };
   Action last_action_ = kUnspecified;
+  int page_size_;          // page_size from schema
+  int max_iteration_;      // prediction times limit
+  int max_candidates_;     // prediction candidate count limit
+  int iteration_counter_;  // times has been predicted
 
   PredictDb* db_;
   connection select_connection_;
