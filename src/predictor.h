@@ -23,6 +23,7 @@ class Predictor : public Processor {
  private:
   enum Action { kUnspecified, kSelect, kDelete };
   Action last_action_ = kUnspecified;
+  int page_size_;
 
   PredictDb* db_;
   connection select_connection_;

@@ -9,11 +9,17 @@
 #include <rime/segmentation.h>
 #include <rime/service.h>
 #include <rime/translation.h>
+#include <rime/schema.h>
 
 namespace rime {
 
 Predictor::Predictor(const Ticket& ticket, PredictDb* db)
     : Processor(ticket), db_(db) {
+  auto schema = ticket.schema;
+  page_size_ = 5;
+  if (schema) {
+    page_size_ = schema->page_size();
+  }
   // update prediction on context change.
   auto* context = engine_->context();
   select_connection_ = context->select_notifier().connect(
@@ -62,6 +68,9 @@ void Predictor::OnContextUpdate(Context* ctx) {
       last_commit.type == "thru") {
     return;
   }
+  if (last_commit.type == "prediction") {
+    return;
+  }
   Predict(ctx, last_commit.text);
 }
 
@@ -75,9 +84,13 @@ void Predictor::Predict(Context* ctx, const string& context_query) {
     ctx->composition().back().tags.erase("raw");
 
     auto translation = New<FifoTranslation>();
+    int i = 0;
     for (auto* it = candidates->begin(); it != candidates->end(); ++it) {
       translation->Append(
           New<SimpleCandidate>("prediction", end, end, db_->GetEntryText(*it)));
+      i++;
+      if (i >= page_size_)
+        break;
     }
     auto menu = New<Menu>();
     menu->AddTranslation(translation);
