@@ -67,7 +67,6 @@ void Predictor::OnSelect(Context* ctx) {
 
 void Predictor::OnContextUpdate(Context* ctx) {
   if (!db_ || !ctx || !ctx->composition().empty()) {
-    iteration_counter_ = 0;
     return;
   }
   if (last_action_ == kDelete) {
@@ -131,10 +130,35 @@ Predictor* PredictorComponent::Create(const Ticket& ticket) {
   if (!db_) {
     the<ResourceResolver> res(
         Service::instance().CreateResourceResolver({"predict_db", "", ""}));
-    auto db =
-        std::make_unique<PredictDb>(res->ResolvePath("predict.db").string());
-    if (db && db->Load()) {
-      db_ = std::move(db);
+    // try to load db file from schema, key "predictor/db"
+    auto* schema = ticket.schema;
+    if (schema) {
+      auto* config = schema->config();
+      string customized_db;
+      if (config->GetString("predictor/db", &customized_db) &&
+          !customized_db.empty()) {
+        auto db = std::make_unique<PredictDb>(
+            res->ResolvePath(customized_db).string());
+        if (db && db->Load()) {
+          db_ = std::move(db);
+        } else {
+          LOG(INFO) << "failed to load db file: "
+                    << res->ResolvePath(customized_db).string()
+                    << ". try to load default predict.db";
+          goto default_db;
+        }
+      } else {
+        LOG(INFO) << "no config key \"predictor/db\" or it's empty, try to "
+                     "load default predict db file: predict.db";
+        goto default_db;
+      }
+    } else {
+    default_db:
+      auto db =
+          std::make_unique<PredictDb>(res->ResolvePath("predict.db").string());
+      if (db && db->Load()) {
+        db_ = std::move(db);
+      }
     }
   }
   return new Predictor(ticket, db_.get());
