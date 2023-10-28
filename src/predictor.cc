@@ -13,25 +13,14 @@
 
 namespace rime {
 
-Predictor::Predictor(const Ticket& ticket, PredictDb* db)
+Predictor::Predictor(const Ticket& ticket,
+                     PredictDb* db,
+                     const int max_candidates,
+                     const int max_iteration)
     : Processor(ticket),
       db_(db),
-      max_iteration_(0),
-      max_candidates_(0),
-      page_size_(5) {
-  // load max_iteration_ and max_candidates_
-  auto* schema = ticket.schema;
-  if (schema) {
-    page_size_ = schema->page_size();
-    auto* config = schema->config();
-    config->GetInt("predictor/max_iteration", &max_iteration_);
-    if (!config->GetInt("predictor/max_candidates", &max_candidates_)) {
-      max_candidates_ = page_size_;
-    }
-  }
-  if (max_candidates_ <= 0) {
-    max_candidates_ = page_size_;
-  }
+      max_iteration_(max_iteration),
+      max_candidates_(max_candidates) {
   // update prediction on context change.
   auto* context = engine_->context();
   select_connection_ = context->select_notifier().connect(
@@ -66,9 +55,8 @@ void Predictor::OnSelect(Context* ctx) {
 }
 
 void Predictor::OnContextUpdate(Context* ctx) {
-  if (!db_ || !ctx || !ctx->composition().empty()) {
+  if (!db_ || !ctx || !ctx->composition().empty())
     return;
-  }
   if (last_action_ == kDelete) {
     return;
   }
@@ -112,8 +100,7 @@ void Predictor::Predict(Context* ctx, const string& context_query) {
       translation->Append(
           New<SimpleCandidate>("prediction", end, end, db_->GetEntryText(*it)));
       i++;
-      if ((max_candidates_ > 0 && i >= max_candidates_) ||
-          (max_candidates_ <= 0 && i >= page_size_))
+      if (max_candidates_ > 0 && i >= max_candidates_)
         break;
     }
     auto menu = New<Menu>();
@@ -127,14 +114,22 @@ PredictorComponent::PredictorComponent() {}
 PredictorComponent::~PredictorComponent() {}
 
 Predictor* PredictorComponent::Create(const Ticket& ticket) {
+  int max_iteration_ = 0, max_candidates_ = 0;
   if (!db_) {
     the<ResourceResolver> res(
         Service::instance().CreateResourceResolver({"predict_db", "", ""}));
-    // try to load db file from schema, key "predictor/db"
+    // try to load keys from schema,
+    // "predictor/db", "predictor/max_iteration", "predictor/max_candidates"
     auto* schema = ticket.schema;
     if (schema) {
       auto* config = schema->config();
       string customized_db;
+      if (!config->GetInt("predictor/max_iteration", &max_iteration_)) {
+        LOG(INFO) << "preditor/max_iteration is not set in schema";
+      }
+      if (!config->GetInt("predictor/max_candidates", &max_candidates_)) {
+        LOG(INFO) << "preditor/max_candidates is not set in schema";
+      }
       if (config->GetString("predictor/db", &customized_db) &&
           !customized_db.empty()) {
         auto db = std::make_unique<PredictDb>(
@@ -142,9 +137,9 @@ Predictor* PredictorComponent::Create(const Ticket& ticket) {
         if (db && db->Load()) {
           db_ = std::move(db);
         } else {
-          LOG(INFO) << "failed to load db file: "
-                    << res->ResolvePath(customized_db).string()
-                    << ". try to load default predict.db";
+          LOG(ERROR) << "failed to load db file: "
+                     << res->ResolvePath(customized_db).string()
+                     << ". try to load default predict.db";
           goto default_db;
         }
       } else {
@@ -161,7 +156,7 @@ Predictor* PredictorComponent::Create(const Ticket& ticket) {
       }
     }
   }
-  return new Predictor(ticket, db_.get());
+  return new Predictor(ticket, db_.get(), max_candidates_, max_iteration_);
 }
 
 }  // namespace rime
