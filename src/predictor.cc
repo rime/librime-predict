@@ -15,11 +15,11 @@ namespace rime {
 
 Predictor::Predictor(const Ticket& ticket,
                      PredictDb* db,
-                     const int max_candidates,
-                     const int max_iteration)
+                     int max_candidates,
+                     int max_iterations)
     : Processor(ticket),
       db_(db),
-      max_iteration_(max_iteration),
+      max_iterations_(max_iterations),
       max_candidates_(max_candidates) {
   // update prediction on context change.
   auto* context = engine_->context();
@@ -72,7 +72,7 @@ void Predictor::OnContextUpdate(Context* ctx) {
   }
   if (last_commit.type == "prediction") {
     iteration_counter_++;
-    if (max_iteration_ > 0 && iteration_counter_ >= max_iteration_) {
+    if (max_iterations_ > 0 && iteration_counter_ >= max_iterations_) {
       iteration_counter_ = 0;
       auto* ctx = engine_->context();
       if (!ctx->composition().empty() &&
@@ -114,49 +114,36 @@ PredictorComponent::PredictorComponent() {}
 PredictorComponent::~PredictorComponent() {}
 
 Predictor* PredictorComponent::Create(const Ticket& ticket) {
-  int max_iteration_ = 0, max_candidates_ = 0;
-  if (!db_) {
-    the<ResourceResolver> res(
-        Service::instance().CreateResourceResolver({"predict_db", "", ""}));
-    // try to load keys from schema,
-    // "predictor/db", "predictor/max_iteration", "predictor/max_candidates"
-    auto* schema = ticket.schema;
-    if (schema) {
-      auto* config = schema->config();
-      string customized_db;
-      if (!config->GetInt("predictor/max_iteration", &max_iteration_)) {
-        LOG(INFO) << "preditor/max_iteration is not set in schema";
-      }
-      if (!config->GetInt("predictor/max_candidates", &max_candidates_)) {
-        LOG(INFO) << "preditor/max_candidates is not set in schema";
-      }
-      if (config->GetString("predictor/db", &customized_db) &&
-          !customized_db.empty()) {
-        auto db = std::make_unique<PredictDb>(
-            res->ResolvePath(customized_db).string());
-        if (db && db->Load()) {
-          db_ = std::move(db);
-        } else {
-          LOG(ERROR) << "failed to load db file: "
-                     << res->ResolvePath(customized_db).string()
-                     << ". try to load default predict.db";
-          goto default_db;
-        }
-      } else {
-        LOG(INFO) << "no config key \"predictor/db\" or it's empty, try to "
-                     "load default predict db file: predict.db";
-        goto default_db;
-      }
-    } else {
-    default_db:
-      auto db =
-          std::make_unique<PredictDb>(res->ResolvePath("predict.db").string());
-      if (db && db->Load()) {
-        db_ = std::move(db);
-      }
+  int max_iterations = 0, max_candidates = 0;
+  string db_file = "predict.db";
+  // load config items from schema
+  auto* schema = ticket.schema;
+  if (schema) {
+    auto* config = schema->config();
+    string customized_db;
+    if (!config->GetInt("predictor/max_iterations", &max_iterations)) {
+      LOG(INFO) << "predictor/max_iterations is not set in schema";
+    }
+    if (!config->GetInt("predictor/max_candidates", &max_candidates)) {
+      LOG(INFO) << "predictor/max_candidates is not set in schema";
+    }
+    if (config->GetString("predictor/db", &customized_db) &&
+        !customized_db.empty()) {
+      db_file = customized_db;
     }
   }
-  return new Predictor(ticket, db_.get(), max_candidates_, max_iteration_);
+  if (!db_ || db_->file_name() != db_file) {
+    the<ResourceResolver> res(
+        Service::instance().CreateResourceResolver({"predict_db", "", ""}));
+    string path = res->ResolvePath(db_file).string();
+    auto db = std::make_unique<PredictDb>(path);
+    if (db && db->Load()) {
+      db_ = std::move(db);
+    } else {
+      LOG(ERROR) << "failed to load db file: " << path;
+    }
+  }
+  return new Predictor(ticket, db_.get(), max_candidates, max_iterations);
 }
 
 }  // namespace rime
