@@ -19,6 +19,7 @@ Predictor::Predictor(const Ticket& ticket,
                      int max_iterations)
     : Processor(ticket),
       db_(db),
+      iteration_counter_(0),
       max_iterations_(max_iterations),
       max_candidates_(max_candidates) {
   // update prediction on context change.
