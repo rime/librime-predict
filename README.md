@@ -19,4 +19,11 @@ predictor:
   # default to 0, which means no limitation
   max_iterations: 1
 ```
+* (Optional) Add a switch to toggle prediction:
+```yaml
+switches:
+  - name: prediction
+    states: [ 关闭预测, 开启预测 ]
+    reset: 1
+```
 * Deploy and enjoy.
