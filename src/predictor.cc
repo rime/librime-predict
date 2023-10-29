@@ -9,11 +9,19 @@
 #include <rime/segmentation.h>
 #include <rime/service.h>
 #include <rime/translation.h>
+#include <rime/schema.h>
 
 namespace rime {
 
-Predictor::Predictor(const Ticket& ticket, PredictDb* db)
-    : Processor(ticket), db_(db) {
+Predictor::Predictor(const Ticket& ticket,
+                     PredictDb* db,
+                     int max_candidates,
+                     int max_iterations)
+    : Processor(ticket),
+      db_(db),
+      iteration_counter_(0),
+      max_iterations_(max_iterations),
+      max_candidates_(max_candidates) {
   // update prediction on context change.
   auto* context = engine_->context();
   select_connection_ = context->select_notifier().connect(
@@ -60,7 +68,20 @@ void Predictor::OnContextUpdate(Context* ctx) {
   auto last_commit = ctx->commit_history().back();
   if (last_commit.type == "punct" || last_commit.type == "raw" ||
       last_commit.type == "thru") {
+    iteration_counter_ = 0;
     return;
+  }
+  if (last_commit.type == "prediction") {
+    iteration_counter_++;
+    if (max_iterations_ > 0 && iteration_counter_ >= max_iterations_) {
+      iteration_counter_ = 0;
+      auto* ctx = engine_->context();
+      if (!ctx->composition().empty() &&
+          ctx->composition().back().HasTag("prediction")) {
+        ctx->Clear();
+      }
+      return;
+    }
   }
   Predict(ctx, last_commit.text);
 }
@@ -75,9 +96,13 @@ void Predictor::Predict(Context* ctx, const string& context_query) {
     ctx->composition().back().tags.erase("raw");
 
     auto translation = New<FifoTranslation>();
+    int i = 0;
     for (auto* it = candidates->begin(); it != candidates->end(); ++it) {
       translation->Append(
           New<SimpleCandidate>("prediction", end, end, db_->GetEntryText(*it)));
+      i++;
+      if (max_candidates_ > 0 && i >= max_candidates_)
+        break;
     }
     auto menu = New<Menu>();
     menu->AddTranslation(translation);
@@ -90,16 +115,36 @@ PredictorComponent::PredictorComponent() {}
 PredictorComponent::~PredictorComponent() {}
 
 Predictor* PredictorComponent::Create(const Ticket& ticket) {
-  if (!db_) {
-    the<ResourceResolver> res(
-        Service::instance().CreateResourceResolver({"predict_db", "", ""}));
-    auto db =
-        std::make_unique<PredictDb>(res->ResolvePath("predict.db").string());
-    if (db && db->Load()) {
-      db_ = std::move(db);
+  int max_iterations = 0, max_candidates = 0;
+  string db_file = "predict.db";
+  // load config items from schema
+  auto* schema = ticket.schema;
+  if (schema) {
+    auto* config = schema->config();
+    string customized_db;
+    if (!config->GetInt("predictor/max_iterations", &max_iterations)) {
+      LOG(INFO) << "predictor/max_iterations is not set in schema";
+    }
+    if (!config->GetInt("predictor/max_candidates", &max_candidates)) {
+      LOG(INFO) << "predictor/max_candidates is not set in schema";
+    }
+    if (config->GetString("predictor/db", &customized_db) &&
+        !customized_db.empty()) {
+      db_file = customized_db;
     }
   }
-  return new Predictor(ticket, db_.get());
+  if (!db_ || db_->file_name() != db_file) {
+    the<ResourceResolver> res(
+        Service::instance().CreateResourceResolver({"predict_db", "", ""}));
+    string path = res->ResolvePath(db_file).string();
+    auto db = std::make_unique<PredictDb>(path);
+    if (db && db->Load()) {
+      db_ = std::move(db);
+    } else {
+      LOG(ERROR) << "failed to load db file: " << path;
+    }
+  }
+  return new Predictor(ticket, db_.get(), max_candidates, max_iterations);
 }
 
 }  // namespace rime

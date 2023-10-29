@@ -10,7 +10,10 @@ class PredictDb;
 
 class Predictor : public Processor {
  public:
-  Predictor(const Ticket& ticket, PredictDb* db);
+  Predictor(const Ticket& ticket,
+            PredictDb* db,
+            int max_candidates,
+            int max_iterations);
   ~Predictor();
 
   ProcessResult ProcessKeyEvent(const KeyEvent& key_event) override;
@@ -23,6 +26,9 @@ class Predictor : public Processor {
  private:
   enum Action { kUnspecified, kSelect, kDelete };
   Action last_action_ = kUnspecified;
+  int max_iterations_;     // prediction times limit
+  int max_candidates_;     // prediction candidate count limit
+  int iteration_counter_;  // times has been predicted
 
   PredictDb* db_;
   connection select_connection_;
