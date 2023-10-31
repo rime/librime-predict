@@ -56,7 +56,8 @@ void Predictor::OnSelect(Context* ctx) {
 }
 
 void Predictor::OnContextUpdate(Context* ctx) {
-  if (!db_ || !ctx || !ctx->composition().empty())
+  if (!db_ || !ctx || !ctx->composition().empty() ||
+      !ctx->get_option("prediction"))
     return;
   if (last_action_ == kDelete) {
     return;
