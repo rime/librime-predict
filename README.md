@@ -5,6 +5,13 @@ librime plugin. predict next word.
 * Put the db file (by default `predict.db`) in rime user directory.
 * In `*.schema.yaml`, add `predictor` to the list of `engine/processors` before `key_binder`,
 or patch the schema with: `engine/processors/@before 0: predictor`
+* Add the `prediction` switch:
+```yaml
+switches:
+  - name: prediction
+    states: [ 关闭预测, 开启预测 ]
+    reset: 1
+```
 * Config items for your predictor:
 ```yaml
 predictor:
@@ -18,12 +25,5 @@ predictor:
   # max continuous prediction times
   # default to 0, which means no limitation
   max_iterations: 1
-```
-* (Optional) Add a switch to toggle prediction:
-```yaml
-switches:
-  - name: prediction
-    states: [ 关闭预测, 开启预测 ]
-    reset: 1
 ```
 * Deploy and enjoy.
