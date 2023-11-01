@@ -77,6 +77,15 @@ int PredictDb::WriteCandidates(const vector<predict::RawEntry>& candidates,
   return int(offset);
 }
 
+// build a temporary key_trie to get size
+static int estimated_key_trie_image_size(size_t data_size,
+                                         const char** keys) {
+  Darts::DoubleArray dummy_key_trie;
+  vector<int> dummy_values(data_size);
+  dummy_key_trie.build(data_size, keys, NULL, dummy_values.data());
+  return dummy_key_trie.total_size();
+}
+
 bool PredictDb::Build(const predict::RawData& data) {
   // create predict db
   int data_size = data.size();
@@ -89,7 +98,6 @@ bool PredictDb::Build(const predict::RawData& data) {
   StringTableBuilder string_table;
   vector<table::Entry> entries(entry_count);
   vector<const char*> keys;
-  vector<int> values(data_size);
   keys.reserve(data_size);
   int i = 0;
   for (const auto& kv : data) {
@@ -103,24 +111,16 @@ bool PredictDb::Build(const predict::RawData& data) {
     }
     keys.push_back(kv.first.c_str());
   }
-  size_t key_trie_array_size;
-  size_t key_trie_image_size;
-  {
-    // build a temporary key_trie to get size
-    Darts::DoubleArray key_trie;
-    key_trie.build(data_size, &keys[0], NULL, &values[0]);
-    key_trie_array_size = key_trie.size();
-    key_trie_image_size = key_trie.total_size();
-    values.clear();
-  }
   // this writes to entry vector, which should be copied to entry array later
   string_table.Build();
   size_t value_trie_image_size = string_table.BinarySize();
-  size_t array_size =
+  size_t entry_array_size =
       data_size * (sizeof(Array<table::Entry>) - sizeof(table::Entry)) +
       entry_count * sizeof(table::Entry);
   size_t estimated_size =
-      kReservedSize + array_size + key_trie_image_size + value_trie_image_size;
+    kReservedSize + entry_array_size +
+    estimated_key_trie_image_size(data_size, keys.data()) +
+    value_trie_image_size;
   if (!Create(estimated_size)) {
     LOG(ERROR) << "Error creating predict db file '" << file_name() << "'.";
     return false;
@@ -134,6 +134,8 @@ bool PredictDb::Build(const predict::RawData& data) {
 
   // copy from entry vector to entry array
   const table::Entry* available_entries = &entries[0];
+  vector<int> values;
+  values.reserve(data_size);
   for (const auto& kv : data) {
     if (kv.second.empty())
       continue;
@@ -141,19 +143,21 @@ bool PredictDb::Build(const predict::RawData& data) {
     available_entries += kv.second.size();
   }
   // build real key trie
-  if (0 != key_trie_->build(data_size, &keys[0], NULL, &values[0])) {
+  if (0 != key_trie_->build(data_size, keys.data(), NULL, values.data())) {
     LOG(ERROR) << "Error building double-array trie.";
     return false;
   }
   // save double-array image
-  char* array = Allocate<char>(key_trie_image_size);
-  if (!array) {
+  size_t key_trie_image_size = key_trie_->total_size();
+  char* key_trie_image = Allocate<char>(key_trie_image_size);
+  if (!key_trie_image) {
     LOG(ERROR) << "Error creating double-array image.";
     return false;
   }
-  std::memcpy(array, key_trie_->array(), key_trie_image_size);
-  metadata_->key_trie = array;
-  metadata_->key_trie_size = key_trie_array_size;
+  std::memcpy(key_trie_image, key_trie_->array(), key_trie_image_size);
+  metadata_->key_trie = key_trie_image;
+  // double-array size (number of units)
+  metadata_->key_trie_size = key_trie_->size();
   // save string table
   char* value_trie_image = Allocate<char>(value_trie_image_size);
   if (!value_trie_image) {
