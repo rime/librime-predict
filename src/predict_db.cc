@@ -78,8 +78,7 @@ int PredictDb::WriteCandidates(const vector<predict::RawEntry>& candidates,
 }
 
 // build a temporary key_trie to get size
-static int estimated_key_trie_image_size(size_t data_size,
-                                         const char** keys) {
+static int estimated_key_trie_image_size(size_t data_size, const char** keys) {
   Darts::DoubleArray dummy_key_trie;
   vector<int> dummy_values(data_size);
   dummy_key_trie.build(data_size, keys, NULL, dummy_values.data());
@@ -118,9 +117,9 @@ bool PredictDb::Build(const predict::RawData& data) {
       data_size * (sizeof(Array<table::Entry>) - sizeof(table::Entry)) +
       entry_count * sizeof(table::Entry);
   size_t estimated_size =
-    kReservedSize + entry_array_size +
-    estimated_key_trie_image_size(data_size, keys.data()) +
-    value_trie_image_size;
+      kReservedSize + entry_array_size +
+      estimated_key_trie_image_size(data_size, keys.data()) +
+      value_trie_image_size;
   if (!Create(estimated_size)) {
     LOG(ERROR) << "Error creating predict db file '" << file_name() << "'.";
     return false;
