@@ -36,17 +36,21 @@ jobs:
 
       - name: Build librime with plugin
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_ASAN=ON
           cmake --build build
 
       - name: Build predict.db
         working-directory: build/bin
-        run: cat ../../plugins/predict/data/sample.txt | ../plugins/predict/bin/build_predict
+        run: |
+          wget https://github.com/rime/librime-predict/releases/download/data-1.0/predict.txt
+          wget -O release.db https://github.com/rime/librime-predict/releases/download/data-1.0/predict.db
+          cat predict.txt | ../plugins/predict/bin/build_predict
+          diff predict.db release.db
 
       - name: Test
         working-directory: build/bin
         run: |
           sed -i '48a \    - predictor' luna_pinyin.schema.yaml
           sed -i '37a \  - name: prediction\n    states: [ 关闭预测, 开启预测 ]\n    reset: 1' luna_pinyin.schema.yaml
-          echo -e 'qi \n ' | ./rime_api_console | tee log
-          grep 'commit: 一' log
+          echo -e 'nihao \n ' | ./rime_api_console | tee log
+          grep 'commit: 嗎' log
