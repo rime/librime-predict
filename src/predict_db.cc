@@ -166,8 +166,8 @@ bool PredictDb::Build(const predict::RawData& data) {
   string_table.Dump(value_trie_image, value_trie_image_size);
   metadata_->value_trie = value_trie_image;
   metadata_->value_trie_size = value_trie_image_size;
-  value_trie_ = make_unique<StringTable>(value_trie_image,
-                                         value_trie_image_size);
+  value_trie_ =
+      make_unique<StringTable>(value_trie_image, value_trie_image_size);
   // at last, complete the metadata
   std::strncpy(metadata_->format, kPredictFormat.c_str(),
                kPredictFormat.length());
