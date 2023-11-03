@@ -42,10 +42,11 @@ jobs:
       - name: Build predict.db
         working-directory: build/bin
         run: |
+          mkdir build
           wget https://github.com/rime/librime-predict/releases/download/data-1.0/predict.txt
-          wget -O release.db https://github.com/rime/librime-predict/releases/download/data-1.0/predict.db
-          cat predict.txt | ../plugins/predict/bin/build_predict
-          diff predict.db release.db
+          wget -O build/release.db https://github.com/rime/librime-predict/releases/download/data-1.0/predict.db
+          cat predict.txt | ../plugins/predict/bin/build_predict build/predict.db
+          diff build/{predict,release}.db
 
       - name: Test
         working-directory: build/bin

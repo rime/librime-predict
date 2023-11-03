@@ -2,7 +2,7 @@
 librime plugin. predict next word.
 
 ## Usage
-* Put the db file (by default `predict.db`) in rime user directory.
+* Put the db file (by default `predict.db`) in `build/` under rime user directory.
 * In `*.schema.yaml`, add `predictor` to the list of `engine/processors` before `key_binder`,
 or patch the schema with: `engine/processors/@before 0: predictor`
 * Add the `prediction` switch:
