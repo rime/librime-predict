@@ -19,7 +19,7 @@ class Predictor : public Processor {
   ProcessResult ProcessKeyEvent(const KeyEvent& key_event) override;
 
  protected:
-  void OnContextUpdate(Context* ctx);
+  void OnCommit(Context* ctx);
   void OnSelect(Context* ctx);
   void Predict(Context* ctx, const string& context_query);
 
@@ -32,7 +32,7 @@ class Predictor : public Processor {
 
   PredictDb* db_;
   connection select_connection_;
-  connection context_update_connection_;
+  connection commit_connection_;
 };
 
 class PredictorComponent : public Predictor::Component {
