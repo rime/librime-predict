@@ -26,13 +26,13 @@ Predictor::Predictor(const Ticket& ticket,
   auto* context = engine_->context();
   select_connection_ = context->select_notifier().connect(
       [this](Context* ctx) { OnSelect(ctx); });
-  context_update_connection_ = context->update_notifier().connect(
-      [this](Context* ctx) { OnContextUpdate(ctx); });
+  commit_connection_ = context->commit_notifier().connect(
+      [this](Context* ctx) { OnCommit(ctx); });
 }
 
 Predictor::~Predictor() {
   select_connection_.disconnect();
-  context_update_connection_.disconnect();
+  commit_connection_.disconnect();
 }
 
 ProcessResult Predictor::ProcessKeyEvent(const KeyEvent& key_event) {
@@ -55,7 +55,7 @@ void Predictor::OnSelect(Context* ctx) {
   last_action_ = kSelect;
 }
 
-void Predictor::OnContextUpdate(Context* ctx) {
+void Predictor::OnCommit(Context* ctx) {
   if (!db_ || !ctx || !ctx->composition().empty() ||
       !ctx->get_option("prediction"))
     return;
