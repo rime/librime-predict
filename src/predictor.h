@@ -14,7 +14,7 @@ class Predictor : public Processor {
             PredictDb* db,
             int max_candidates,
             int max_iterations);
-  ~Predictor();
+  virtual ~Predictor();
 
   ProcessResult ProcessKeyEvent(const KeyEvent& key_event) override;
 
