@@ -136,8 +136,7 @@ Predictor* PredictorComponent::Create(const Ticket& ticket) {
   }
   if (!db_ || db_->file_name() != db_file) {
     the<ResourceResolver> res(
-        Service::instance().CreateDeployedResourceResolver(
-            {"predict_db", "", ""}));
+        Service::instance().CreateResourceResolver({"predict_db", "", ""}));
     string path = res->ResolvePath(db_file).string();
     auto db = std::make_unique<PredictDb>(path);
     if (db && db->Load()) {
