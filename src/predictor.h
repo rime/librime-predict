@@ -6,14 +6,12 @@
 namespace rime {
 
 class Context;
-class PredictDb;
+class PredictEngine;
+class PredictEngineComponent;
 
 class Predictor : public Processor {
  public:
-  Predictor(const Ticket& ticket,
-            PredictDb* db,
-            int max_candidates,
-            int max_iterations);
+  Predictor(const Ticket& ticket, an<PredictEngine> predict_engine);
   virtual ~Predictor();
 
   ProcessResult ProcessKeyEvent(const KeyEvent& key_event) override;
@@ -21,29 +19,28 @@ class Predictor : public Processor {
  protected:
   void OnContextUpdate(Context* ctx);
   void OnSelect(Context* ctx);
-  void Predict(Context* ctx, const string& context_query);
+  void PredictAndUpdate(Context* ctx, const string& context_query);
 
  private:
   enum Action { kUnspecified, kSelect, kDelete };
   Action last_action_ = kUnspecified;
-  int max_iterations_;     // prediction times limit
-  int max_candidates_;     // prediction candidate count limit
-  int iteration_counter_;  // times has been predicted
+  bool self_updating_ = false;
+  int iteration_counter_ = 0;  // times has been predicted
 
-  PredictDb* db_;
+  an<PredictEngine> predict_engine_;
   connection select_connection_;
   connection context_update_connection_;
 };
 
 class PredictorComponent : public Predictor::Component {
  public:
-  PredictorComponent();
+  explicit PredictorComponent(an<PredictEngineComponent> engine_factory);
   virtual ~PredictorComponent();
 
   Predictor* Create(const Ticket& ticket) override;
 
  protected:
-  the<PredictDb> db_;
+  an<PredictEngineComponent> engine_factory_;
 };
 
 }  // namespace rime
