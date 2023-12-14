@@ -50,7 +50,6 @@ jobs:
       - name: Test
         working-directory: build/bin
         run: |
-          sed -i '48a \    - predictor' luna_pinyin.schema.yaml
-          sed -i '37a \  - name: prediction\n    states: [ 关闭预测, 开启预测 ]\n    reset: 1' luna_pinyin.schema.yaml
+          cp ../../plugins/predict/data/luna_pinyin.custom.yaml .
           echo -e 'nihao \n ' | ./rime_api_console | tee log
           grep 'commit: 嗎' log

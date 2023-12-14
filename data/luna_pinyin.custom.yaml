@@ -1,0 +1,10 @@
+patch:
+  'engine/processors/@after 0': predictor
+  'engine/translators/@before 0': predict_translator
+  'switches/+':
+    - name: prediction
+      reset: 1
+  predictor:
+    db: predict.db
+    max_iterations: 3
+    max_candidates: 10
