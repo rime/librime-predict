@@ -4,12 +4,19 @@ librime plugin. predict next word.
 ## Usage
 * Put the db file (by default `predict.db`) in rime user directory.
 * In `*.schema.yaml`, add `predictor` to the list of `engine/processors` before `key_binder`,
-or patch the schema with: `engine/processors/@before 0: predictor`
+add `predict_translator` to the list of `engine/translators`;
+or patch the schema with:
+```yaml
+patch:
+  'engine/processors/@before 0': predictor
+  'engine/translators/@before 0': predict_translator
+```
+
 * Add the `prediction` switch:
 ```yaml
 switches:
   - name: prediction
-    states: [ 关闭预测, 开启预测 ]
+    states: [ 關閉預測, 開啓預測 ]
     reset: 1
 ```
 * Config items for your predictor:
