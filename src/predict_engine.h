@@ -8,8 +8,8 @@
 namespace rime {
 
 class Context;
-class Segment;
-class Ticket;
+struct Segment;
+struct Ticket;
 class Translation;
 
 class PredictEngine : public Class<PredictEngine, const Ticket&> {
