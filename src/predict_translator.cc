@@ -20,6 +20,8 @@ PredictTranslator::PredictTranslator(const Ticket& ticket,
 
 an<Translation> PredictTranslator::Query(const string& input,
                                          const Segment& segment) {
+  if (!predict_engine_)
+    return nullptr;
   if (predict_engine_->query().empty() || !segment.HasTag("prediction")) {
     return nullptr;
   }
