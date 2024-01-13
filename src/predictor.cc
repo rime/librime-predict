@@ -30,6 +30,8 @@ Predictor::~Predictor() {
 }
 
 ProcessResult Predictor::ProcessKeyEvent(const KeyEvent& key_event) {
+  if (!engine_)
+    return kNoop;
   auto keycode = key_event.keycode();
   if (keycode == XK_BackSpace || keycode == XK_Escape) {
     last_action_ = kDelete;
