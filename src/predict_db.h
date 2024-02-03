@@ -34,9 +34,8 @@ using RawData = map<string, vector<RawEntry>>;
 
 class PredictDb : public MappedFile {
  public:
-  PredictDb(const string& file_name)
-      : MappedFile(file_name),
-        file_name_(file_name),
+  PredictDb(const path& file_path)
+      : MappedFile(file_path),
         key_trie_(new Darts::DoubleArray),
         value_trie_(new StringTable) {}
 
@@ -45,13 +44,11 @@ class PredictDb : public MappedFile {
   bool Build(const predict::RawData& data);
   predict::Candidates* Lookup(const string& query);
   string GetEntryText(const ::rime::table::Entry& entry);
-  const string file_name() { return file_name_; }
 
  private:
   int WriteCandidates(const vector<predict::RawEntry>& candidates,
                       const table::Entry* entry);
 
-  const string file_name_;
   predict::Metadata* metadata_ = nullptr;
   the<Darts::DoubleArray> key_trie_;
   the<StringTable> value_trie_;

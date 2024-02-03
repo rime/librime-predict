@@ -12,13 +12,13 @@ const string kPredictFormat = "Rime::Predict/1.0";
 const string kPredictFormatPrefix = "Rime::Predict/";
 
 bool PredictDb::Load() {
-  LOG(INFO) << "loading predict db: " << file_name();
+  LOG(INFO) << "loading predict db: " << file_path();
 
   if (IsOpen())
     Close();
 
   if (!OpenReadOnly()) {
-    LOG(ERROR) << "error opening predict db '" << file_name() << "'.";
+    LOG(ERROR) << "error opening predict db '" << file_path() << "'.";
     return false;
   }
 
@@ -58,7 +58,7 @@ bool PredictDb::Load() {
 }
 
 bool PredictDb::Save() {
-  LOG(INFO) << "saving predict db: " << file_name();
+  LOG(INFO) << "saving predict db: " << file_path();
   if (!key_trie_->total_size()) {
     LOG(ERROR) << "the trie has not been constructed!";
     return false;
@@ -106,12 +106,12 @@ bool PredictDb::Build(const predict::RawData& data) {
   string_table.Build();
   size_t value_trie_image_size = string_table.BinarySize();
   if (!Create(value_trie_image_size)) {
-    LOG(ERROR) << "Error creating predict db file '" << file_name() << "'.";
+    LOG(ERROR) << "Error creating predict db file '" << file_path() << "'.";
     return false;
   }
   // create metadata in the beginning of file
   if (!Allocate<predict::Metadata>()) {
-    LOG(ERROR) << "Error creating metadata in file '" << file_name() << "'.";
+    LOG(ERROR) << "Error creating metadata in file '" << file_path() << "'.";
     return false;
   }
 

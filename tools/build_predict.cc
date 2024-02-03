@@ -20,13 +20,13 @@ int main(int argc, char* argv[]) {
     data[key].push_back(std::move(entry));
   }
 
-  string file_name = argc > 1 ? string(argv[1]) : string("predict.db");
-  PredictDb db(file_name);
-  LOG(INFO) << "creating " << db.file_name();
+  path file_path = argc > 1 ? path(argv[1]) : path{"predict.db"};
+  PredictDb db(file_path);
+  LOG(INFO) << "creating " << db.file_path();
   if (!db.Build(data) || !db.Save()) {
-    LOG(ERROR) << "failed to build " << db.file_name();
+    LOG(ERROR) << "failed to build " << db.file_path();
     return 1;
   }
-  LOG(INFO) << "created: " << db.file_name();
+  LOG(INFO) << "created: " << db.file_path();
   return 0;
 }
