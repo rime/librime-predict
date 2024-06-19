@@ -18,7 +18,7 @@ jobs:
         run: find src tools -name '*.cc' -o -name '*.h' | xargs clang-format -Werror --dry-run || { echo Please lint your code by '"'"find src tools -name '*.cc' -o -name '*.h' | xargs clang-format -i"'"'.; false; }
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: lint
     steps:
       - name: Checkout librime
